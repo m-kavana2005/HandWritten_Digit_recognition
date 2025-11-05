@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Handwritten Digit Recognition</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="overlay"></div>
+  <div class="container">
+    <h1>🖊️ Handwritten Digit Recognition</h1>
+    <p class="subtitle">
+      An AI-powered web app that recognizes handwritten digits (0–9) using a deep learning model trained on the MNIST dataset.
+    </p>
+
+    <div class="card">
+      <h2>Try it out 👇</h2>
+      <canvas id="canvas" width="280" height="280"></canvas>
+      <div class="buttons">
+        <button onclick="clearCanvas()">Clear</button>
+        <button onclick="predict()">Predict</button>
+      </div>
+      <p id="result">Prediction: <span>-</span></p>
+      <div id="loader" class="hidden">⏳ Recognizing...</div>
+    </div>
+
+    <div class="info">
+      <h3>About this project</h3>
+      <p>
+        This project demonstrates the power of <b>Deep Learning</b> using a Convolutional Neural Network (CNN).
+        The model has been trained on the <b>MNIST dataset</b>, achieving over 99% accuracy.
+      </p>
+      <img src="https://upload.wikimedia.org/wikipedia/commons/2/27/MnistExamples.png" 
+           alt="MNIST Samples" class="sample-img">
+    </div>
+
+    <footer>
+      <p>Created by <b>Team AI</b> | Powered by Flask + TensorFlow</p>
+    </footer>
+  </div>
+
+  <script>
+    let canvas = document.getElementById("canvas");
+    let ctx = canvas.getContext("2d");
+    ctx.lineWidth = 18;
+    ctx.lineCap = "round";
+    ctx.strokeStyle = "black";
+
+    let drawing = false;
+
+    canvas.addEventListener("mousedown", () => { drawing = true; });
+    canvas.addEventListener("mouseup", () => { drawing = false; ctx.beginPath(); });
+    canvas.addEventListener("mousemove", draw);
+
+    function draw(e) {
+      if (!drawing) return;
+      ctx.lineTo(e.offsetX, e.offsetY);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(e.offsetX, e.offsetY);
+    }
+
+    function clearCanvas() {
+      ctx.fillStyle = "white";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.beginPath();
+      document.getElementById("result").innerHTML = "Prediction: <span>-</span>";
+    }
+
+    clearCanvas();
+
+    function predict() {
+      let loader = document.getElementById("loader");
+      loader.classList.remove("hidden");
+
+      let dataURL = canvas.toDataURL("image/png");
+      fetch("/predict", {
+        method: "POST",
+        body: JSON.stringify({ image: dataURL }),
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(res => res.json())
+      .then(data => {
+        loader.classList.add("hidden");
+        if (data.error) {
+          document.getElementById("result").innerText = "Error: " + data.error;
+          return;
+        }
+        let best = data.digit;
+        let top = data.predictions
+          .map(p => `${p.digit} (${Math.round(p.probability*100)}%)`)
+          .join(", ");
+        document.getElementById("result").innerText =
+          `Prediction: ${best}\nTop 3: ${top}`;
+      })
+      .catch(err => {
+        loader.classList.add("hidden");
+        document.getElementById("result").innerText = "Error: " + err;
+      });
+    }
+  </script>
+</body>
+</html>
